@@ -1,0 +1,406 @@
+import pandas as pd 
+import numpy as np
+import datetime as time
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error,mean_squared_error,r2_score
+from sklearn.linear_model import LinearRegression
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+from keras.layers import SimpleRNN, Dense
+from keras.layers import GRU, Dense
+#reading the data from .read_csv function
+df = pd.read_csv('train.csv')
+#Display top 5 rows of the dataset
+df.head()
+#Display the information of dataset
+df.info()
+# Convert the datetime oject to to_datetime 
+df['datetime'] = pd.to_datetime(df['datetime'])
+# Feature extraction from the datetime column
+df['year'] = df['datetime'].dt.year
+df['month'] = df['datetime'].dt.month
+ENERGY CONSUMPTION PREDICTION
+47
+df['day'] = df['datetime'].dt.day
+df['day_of_week'] = df['datetime'].dt.dayofweek
+df['hour'] = df['datetime'].dt.hour
+# Drop the datetime column
+df.drop('datetime',axis=1,inplace=True)
+# Check the count of categories in var2 column
+df['var2'].value_counts()
+# Replace the categories to numerical value
+df['var2'] = df['var2'].replace({'A':1,'B':2,'C':3})
+# Count negative and positive values
+negative_count = np.sum(df['temperature'] < 0)
+positive_count = np.sum(df['temperature'] >= 0)
+# Calculate percentages
+total_count = len(df)
+percentage_negative = (negative_count / total_count) * 100
+percentage_positive = (positive_count / total_count) * 100
+# Display the results
+print(f"Percentage of negative values: {percentage_negative:.2f}%")
+print(f"Percentage of positive values: {percentage_positive:.2f}%")
+# Count negative and positive values
+negative_count = np.sum(df['var1'] < 0)
+positive_count = np.sum(df['var1'] >= 0)
+# Calculate percentages
+total_count = len(df)
+percentage_negative = (negative_count / total_count) * 100
+percentage_positive = (positive_count / total_count) * 100
+# Display the results
+ENERGY CONSUMPTION PREDICTION
+48
+print(f"Percentage of negative values: {percentage_negative:.2f}%")
+print(f"Percentage of positive values: {percentage_positive:.2f}%")
+# Check for missing value
+missing_value = df.isnull().sum()
+print('Missing value:',missing_value)
+# Check for duplicate records
+duplicate_records = df[df.duplicated()]
+print('Number of duplicate values:',duplicate_records)
+df.info()
+df.describe()
+# Apply describe() to each feature individually
+year_stats = df['year'].describe()
+month_stats = df['month'].describe()
+day_stats = df['day'].describe()
+day_of_week_stats = df['day_of_week'].describe()
+hour_stats = df['hour'].describe()
+# Print the descriptive statistics for each feature
+print("Year Statistics:\n", year_stats)
+print("\nMonth Statistics:\n", month_stats)
+print("\nDay Statistics:\n", day_stats)
+print("\nDay of Week Statistics:\n", day_of_week_stats)
+print("\Hour Statistics:\n", hour_stats)
+# Time Series Plot for Electricity Consumption
+plt.figure(figsize=(18, 6))
+plt.plot(df['year'].astype(str) + '-' + df['month'].astype(str), df['electricity_consumption'], 
+label='Electricity Consumption')
+plt.xlabel('year')
+plt.ylabel('Electricity Consumption')
+ENERGY CONSUMPTION PREDICTION
+49
+plt.title('Electricity Consumption Over Time')
+plt.legend()
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.show()
+# Histograms and Density Plots for Numerical Features
+num_features = ['temperature', 'var1', 'pressure', 'windspeed', 'var2']
+plt.figure(figsize=(12, 8))
+for i, feature in enumerate(num_features, start=1):
+ plt.subplot(2, 3, i)
+ sns.histplot(df[feature], kde=True)
+ plt.xlabel(feature)
+ plt.title(f'{feature} Distribution')
+plt.tight_layout()
+plt.show()
+# Scatter Plot between Numerical Feature temperature and Electricity Consumption
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='temperature', y='electricity_consumption', data=df)
+plt.xlabel('Temperature')
+plt.ylabel('Electricity Consumption')
+plt.title('Scatter Plot: Temperature vs. Electricity Consumption')
+plt.grid(True)
+plt.show()
+# Scatter Plot between Numerical Feature temperature and Electricity Consumption
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='windspeed', y='electricity_consumption', data=df)
+plt.xlabel('wind speed')
+ENERGY CONSUMPTION PREDICTION
+50
+plt.ylabel('Electricity Consumption')
+plt.title('Scatter Plot: wind speed vs. Electricity Consumption')
+plt.grid(True)
+plt.show()
+# Scatter Plot between Numerical Feature temperature and Electricity Consumption
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='pressure', y='electricity_consumption', data=df)
+plt.xlabel('Pressure')
+plt.ylabel('Electricity Consumption')
+plt.title('Scatter Plot: Pressure vs. Electricity Consumption')
+plt.grid(True)
+plt.show()
+# Basic statistics for temperature, pressure, windspeed, and electricity_consumption
+print(df[['temperature', 'pressure', 'windspeed', 'electricity_consumption']].describe())
+# Histograms for continuous variables
+df[['temperature', 'pressure', 'windspeed', 'electricity_consumption']].hist(bins=20, figsize=(12, 
+8))
+plt.show()
+# Bar plots for categorical variables (Var1, Var2)
+sns.countplot(data=df, x='var1')
+plt.show()
+#sns.countplot(data=df, x='var2')
+#plt.show()
+# Scatter plot for Temperature vs. Electricity Consumption
+plt.scatter(df['temperature'], df['electricity_consumption'])
+plt.xlabel('Temperature')
+plt.ylabel('Electricity Consumption')
+plt.title('Temperature vs. Electricity Consumption')
+ENERGY CONSUMPTION PREDICTION
+51
+plt.show()
+# Correlation matrix heatmap
+correlation_matrix = df.corr()
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Correlation Heatmap')
+plt.show()
+# Box plot for Electricity Consumption across different months
+sns.boxplot(data=df, x='month', y='electricity_consumption')
+plt.xlabel('Month')
+plt.ylabel('Electricity Consumption')
+plt.title('Electricity Consumption by Month')
+plt.show()
+LINEAR REGRESSION
+# Drop ID and var2 column
+df.drop('ID',axis=1,inplace=True)
+df.drop('var2',axis=1,inplace=True)
+# Step 1: Shift and scale both 'temperature' and 'var1' columns
+min_temp = df['temperature'].min()
+min_var1 = df['var1'].min()
+scale_factor_temp = 10 # Scale factor for 'temperature' column
+scale_factor_var1 = 5 # Scale factor for 'var1' column
+df['temperature'] = (df['temperature'] + abs(min_temp)) / scale_factor_temp
+df['var1'] = (df['var1'] + abs(min_var1)) / scale_factor_var1
+# log transformation on pressure,windspeed,electricity_consumption
+columns_to_transform = ['pressure', 'windspeed', 'electricity_consumption']
+for column in columns_to_transform:
+ df[column] = np.log(df[column] + 1)
+ENERGY CONSUMPTION PREDICTION
+52
+df.head()
+# Split the data into X and y
+Xlinear=df[['temperature','var1',pressure','windspeed','year','month','day','day_of_week','hour']
+Ylinear = df['electricity_consumption']
+# Split data into training and testing sets
+X_trainlinear, X_testlinear, y_trainlinear, y_testlinear = train_test_split(Xlinear, ylinear, 
+test_size=0.2, random_state=42)
+# Create and train the linear regression model
+Linearmodel = LinearRegression()
+Linearmodel.fit(X_trainlinear, y_trainlinear)
+# Make predictions on the test set
+y_predLR = Linearmodel.predict(X_testlinear)
+# Evaluate the model
+mea = mean_absolute_error(y_testlinear, y_predLR)
+mse = mean_squared_error(y_testlinear, y_predLR)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_testlinear,y_predLR)
+print(f"Mean Absolute Error: {mea:.2f}")
+print(f"Mean Square Error: {mse:.2f}")
+print(f"Root Mean Square Error: {rmse:.2f}")
+print(f"R2 Score: {r2:.2f}")
+X_testlinear
+y_testlinear
+# Define your new data for prediction (replace with your actual values)
+new_data_linear = np.array([3.21,7.44,6.899723,1.737831,2015,11,3,1,12])
+# Reshape the new data (it should have the same number of features as your original data)
+new_data_linear = new_data_linear.reshape(1, -1)
+# Make predictions using the trained linear regression model
+ENERGY CONSUMPTION PREDICTION
+53
+predicted_linear = Linearmodel.predict(new_data_linear)
+print(f"Predicted Electricity Consumption Using Linear Regression: 
+{predicted_linear[0]:.2f}")
+LONG SHORT TERM MEMORY
+# Split the data into Xlstm and ylstm
+Xlstm = df[['temperature', 'var1', 'pressure', 'windspeed', 'year', 'month', 'day', 'day_of_week', 
+'hour']].values
+ylstm = df['electricity_consumption'].values
+# Define sequence length (number of previous time steps to consider)
+sequence_length = 1 # Each data point is treated independently
+# Reshape the input data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(Xlstm) - sequence_length):
+ X_seq.append(Xlstm[i:i + sequence_length])
+ y_seq.append(ylstm[i + sequence_length])
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+# Split the data into training and testing sets
+X_trainlstm, X_testlstm, y_trainlstm, y_testlstm = train_test_split(X_seq, y_seq, 
+test_size=0.2, random_state=42)
+# Define the LSTM model
+model = Sequential()
+model.add(LSTM(50, activation='relu', input_shape=(X_trainlstm.shape[1], 
+X_trainlstm.shape[2])))
+model.add(Dense(1)) # Output layer with 1 neuron for regression
+model.compile(optimizer='adam', loss='mean_squared_error')
+# Train the LSTM model
+ENERGY CONSUMPTION PREDICTION
+54
+model.fit(X_trainlstm, y_trainlstm, epochs=100, batch_size=32, verbose=1)
+# Evaluate the model on the test set
+y_predLSTM = model.predict(X_testlstm)
+# Evaluate the model
+mea = mean_absolute_error(y_testlstm, y_predLSTM)
+mse = mean_squared_error(y_testlstm, y_predLSTM)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_testlstm, y_predLSTM)
+print(f"Mean Absolute Error: {mea:.2f}")
+print(f"Mean Square Error: {mse:.2f}")
+print(f"Root Mean Square Error: {rmse:.2f}")
+print(f"R2 Score: {r2:.2f}")
+# Define a new data point (replace with your actual values)
+new_data_point = np.array([3.21,7.44,6.899723,1.737831,2015,11,3,1,12])
+# Reshape the new data point into a sequence
+new_data_point = new_data_point.reshape(1, sequence_length, -1)
+# Use the trained LSTM model to predict the electricity consumption for the new data point
+predicted_value = model.predict(new_data_point)
+print(f"Predicted Electricity Consumption Using LSTM: {predicted_value[0][0]:.2f}")
+RECURRENT NEURAL NETWORK
+# Split the data into X and y
+Xrnn = df[['temperature', 'var1', 'pressure', 
+'windspeed','year','month','day','day_of_week','hour']].values
+yrnn = df['electricity_consumption'].values
+# Define sequence length (number of previous time steps to consider)
+sequence_length = 1 # Each data point is treated independently
+ENERGY CONSUMPTION PREDICTION
+55
+# Reshape the input data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(Xrnn) - sequence_length):
+ X_seq.append(Xrnn[i:i + sequence_length])
+ y_seq.append(yrnn[i + sequence_length])
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+# Split the data into training and testing sets
+X_trainrnn, X_testrnn, y_trainrnn, y_testrnn = train_test_split(X_seq, y_seq, test_size=0.2, 
+random_state=42)
+# Define the RNN model
+RNNmodel = Sequential()
+RNNmodel.add(SimpleRNN(50, activation='relu', input_shape=(X_trainrnn.shape[1], 
+X_trainrnn.shape[2])))
+RNNmodel.add(Dense(1)) # Output layer with 1 neuron for regression
+RNNmodel.compile(optimizer='adam', loss='mean_squared_error')
+# Train the RNN model
+RNNmodel.fit(X_trainrnn, y_trainrnn, epochs=100, batch_size=32, verbose=1)
+# Evaluate the model on the test set
+y_predRNN = RNNmodel.predict(X_testrnn)
+# Evaluate the model
+mea = mean_absolute_error(y_testrnn, y_predRNN)
+mse = mean_squared_error(y_testrnn, y_predRNN)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_testrnn, y_predRNN)
+print(f"Mean Absolute Error: {mea:.2f}")
+print(f"Mean Square Error: {mse:.2f}")
+ENERGY CONSUMPTION PREDICTION
+56
+print(f"Root Mean Square Error: {rmse:.2f}")
+print(f"R2 Score: {r2:.2f}")
+Define a new data point (replace with your actual values)
+new_data_point = np.array([3.21,7.44,6.899723,1.737831,2015,11,3,1,12])
+# Reshape the new data point into a sequence
+new_data_point = new_data_point.reshape(1, sequence_length, -1)
+# Use the trained LSTM model to predict the electricity consumption for the new data point
+predicted_value = RNNmodel.predict(new_data_point)
+print(f"Predicted Electricity Consumption Using RNN: {predicted_value[0][0]:.2f}")
+STACKED LSTM
+# Split the data into Xlstm and ylstm
+XSlstm = df[['temperature', 'var1', 'pressure', 'windspeed', 'year', 'month', 'day', 'day_of_week', 
+'hour']].values
+ySlstm = df['electricity_consumption'].values
+# Define sequence length (number of previous time steps to consider)
+sequence_length = 1 # Each data point is treated independently
+# Reshape the input data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(XSlstm) - sequence_length):
+ X_seq.append(XSlstm[i:i + sequence_length])
+ y_seq.append(ySlstm[i + sequence_length])
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+# Split the data into training and testing sets
+X_trainSlstm, X_testSlstm, y_trainSlstm, y_testSlstm = train_test_split(X_seq, y_seq, 
+test_size=0.2, random_state=42)
+# Define the stacked LSTM model
+ENERGY CONSUMPTION PREDICTION
+57
+SLSTMmodel = Sequential()
+# First LSTM layer
+SLSTMmodel.add(LSTM(50, activation='relu', return_sequences=True, 
+input_shape=(X_trainSlstm.shape[1], X_trainSlstm.shape[2])))
+# Second LSTM layer (stacked)
+SLSTMmodel.add(LSTM(50, activation='relu', return_sequences=True))
+# Third LSTM layer (stacked)
+SLSTMmodel.add(LSTM(50, activation='relu'))
+# Output layer with 1 neuron for regression
+SLSTMmodel.add(Dense(1))
+SLSTMmodel.compile(optimizer='adam', loss='mean_squared_error')
+Train the LSTM model
+SLSTMmodel.fit(X_trainSlstm, y_trainSlstm, epochs=100, batch_size=32, verbose=1)
+# Evaluate the model on the test set
+y_predSLSTM = SLSTMmodel.predict(X_testSlstm)
+# Evaluate the model
+mea = mean_absolute_error(y_testSlstm, y_predSLSTM)
+mse = mean_squared_error(y_testSlstm, y_predSLSTM)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_testSlstm, y_predSLSTM)
+print(f"Mean Absolute Error: {mea:.2f}")
+print(f"Mean Square Error: {mse:.2f}")
+print(f"Root Mean Square Error: {rmse:.2f}")
+print(f"R2 Score: {r2:.2f}")
+# Define a new data point (replace with your actual values)
+new_data_point = np.array([3.21,7.44,6.899723,1.737831,2015,11,3,1,12])
+# Reshape the new data point into a sequence
+new_data_point = new_data_point.reshape(1, sequence_length, -1)
+ENERGY CONSUMPTION PREDICTION
+58
+# Use the trained Stacked LSTM model to predict the electricity consumption for the new 
+data point
+predicted_value = SLSTMmodel.predict(new_data_point)
+print(f"Predicted Electricity Consumption Using Stacked LSTM: 
+{predicted_value[0][0]:.2f}")
+GATED RECURRENT UNIT
+Split the data into X and y
+Xgru = df[['temperature', 'var1', 'pressure', 
+'windspeed','year','month','day','day_of_week','hour']].values
+ygru = df['electricity_consumption'].values
+# Define sequence length (number of previous time steps to consider)
+sequence_length = 1 # Each data point is treated independently
+# Reshape the input data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(Xgru) - sequence_length):
+ X_seq.append(Xgru[i:i + sequence_length])
+ y_seq.append(ygru[i + sequence_length])
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+# Split the data into training and testing sets
+X_traingru, X_testgru, y_traingru, y_testgru = train_test_split(X_seq, y_seq, test_size=0.2, 
+random_state=42)
+# Define the single-layer GRU model
+GRUmodel = Sequential()
+# Single GRU layer
+GRUmodel.add(GRU(50, activation='relu', input_shape=(X_traingru.shape[1], 
+X_traingru.shape[2])))
+# Output layer with 1 neuron for regression
+ENERGY CONSUMPTION PREDICTION
+59
+GRUmodel.add(Dense(1))
+# Compile the model
+GRUmodel.compile(optimizer='adam', loss='mean_squared_error')
+# Train the LSTM model
+GRUmodel.fit(X_traingru, y_traingru, epochs=100, batch_size=32, verbose=1)
+# Evaluate the model on the test set
+y_predGRU = GRUmodel.predict(X_testgru)
+# Evaluate the model
+mea = mean_absolute_error(y_testgru, y_predGRU)
+mse = mean_squared_error(y_testgru, y_predGRU)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_testgru, y_predGRU)
+print(f"Mean Absolute Error: {mea:.2f}")
+print(f"Mean Square Error: {mse:.2f}")
+print(f"Root Mean Square Error: {rmse:.2f}")
+print(f"R2 Score: {r2:.2f}")
+# Define a new data point (replace with your actual values)
+new_data_point = np.array([3.21,7.44,6.899723,1.737831,2015,11,3,1,12])
+# Reshape the new data point into a sequence
+new_data_point = new_data_point.reshape(1, sequence_length, -1)
+# Use the trained Stacked LSTM model to predict the electricity consumption for the new 
+data point
+predicted_value = GRUmodel.predict(new_data_point)
+print(f"Predicted Electricity Consumption Using GRU: {predicted_value[0][0]:.2f}"
